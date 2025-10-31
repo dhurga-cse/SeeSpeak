@@ -1,0 +1,9 @@
+opencv-python
+pytesseract
+Pillow
+dlib
+face_recognition
+pyttsx3
+imutils
+numpy
+ultralytics
