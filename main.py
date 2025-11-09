@@ -1,150 +1,81 @@
+import tkinter as tk
+from tkinter import messagebox
+import subprocess
+import sys
+import os
 
-import cv2
-from collections import Counter
+def run_script(script_name):
+    """Run a Python file in a separate process."""
+    script_path = os.path.join(os.getcwd(), script_name)
+    if not os.path.exists(script_path):
+        messagebox.showerror("Error", f"{script_name} not found!")
+        return
+    subprocess.Popen([sys.executable, script_path])
 
-from face_recognition_module import load_known_faces, recognize_faces
-from object_detection import detect_objects
-from text_recognition import recognize_text
-from color_detection import dominant_color_name
-from voice_output import speak, set_voice, shutdown
-from utils import beep
+def open_object_detection():
+    run_script("object_detection_gui.py")
 
-HELP_TEXT = [
-    "SeeSpeak — Keys:",
-    " q  = Quit",
-    " f  = Front cam   |  b = Back cam (Iriun)",
-    " o  = Toggle object announcements",
-    " t  = Read center text (once)",
-    " s  = Scene summary (top objects)",
-    " c  = Say dominant color (center)",
-    " g  = Set TARGET as object under crosshair (beep when centered)",
-]
+def open_text_recognition():
+    run_script("text_recognition.py")
 
-def draw_overlay(frame, camera_index, announce_objects, target):
-    h, w = frame.shape[:2]
-    cv2.drawMarker(frame, (w // 2, h // 2), (255, 255, 255), cv2.MARKER_CROSS, 20, 2)
-    bar = f"Cam: {camera_index} | Announce: {'ON' if announce_objects else 'OFF'} | Target: {target or '-'}"
-    cv2.rectangle(frame, (0, 0), (w, 28), (0, 0, 0), -1)
-    cv2.putText(frame, bar, (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 255, 200), 1)
+def open_voice_output_test():
+    run_script("voice_output.py")
 
-    y = 40
-    for line in HELP_TEXT:
-        cv2.putText(frame, line, (8, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (220, 220, 220), 1)
-        y += 18
+def exit_app():
+    root.destroy()
 
-def pick_camera(prefer_index=1):
-    """
-    Prefer back cam (Iriun) at index 1 if available, otherwise 0.
-    """
-    for idx in [prefer_index, 0]:
-        cap = cv2.VideoCapture(idx)
-        if cap.isOpened():
-            return cap, idx
-        cap.release()
-    raise RuntimeError("No camera available")
 
-def object_under_center(dets, w, h):
-    """Return name of object whose box contains the center, else None."""
-    cx, cy = w // 2, h // 2
-    for name, (x1, y1, x2, y2), _ in dets:
-        if x1 <= cx <= x2 and y1 <= cy <= y2:
-            return name
-    return None
+root = tk.Tk()
+root.title(" SeeSpeak - AI Vision Assistant")
+root.geometry("450x300")
+root.configure(bg="#E6F3FF")
 
-def main():
-    print("🔁 Loading known faces...")
-    encodings, names = load_known_faces()
+tk.Label(
+    root,
+    text=" SeeSpeak - AI Vision Assistant",
+    bg="#E6F3FF",
+    fg="#003366",
+    font=("Arial", 16, "bold"),
+).pack(pady=20)
 
-    cap, camera_index = pick_camera(prefer_index=1)  # try Iriun first
-    announce_objects = True
-    target = None
+tk.Button(
+    root,
+    text=" Object Detection",
+    command=open_object_detection,
+    bg="#007BFF",
+    fg="white",
+    font=("Arial", 12, "bold"),
+    width=25
+).pack(pady=8)
 
-    set_voice(rate=175, volume=1.0)
+tk.Button(
+    root,
+    text="Text Recognition",
+    command=open_text_recognition,
+    bg="#32CD32",
+    fg="white",
+    font=("Arial", 12, "bold"),
+    width=25
+).pack(pady=8)
 
-    while True:
-        ok, frame = cap.read()
-        if not ok:
-            break
+tk.Button(
+    root,
+    text="Voice Output Test",
+    command=open_voice_output_test,
+    bg="#FFA500",
+    fg="white",
+    font=("Arial", 12, "bold"),
+    width=25
+).pack(pady=8)
 
-        h, w = frame.shape[:2]
+tk.Button(
+    root,
+    text=" Quit",
+    command=exit_app,
+    bg="#FF6347",
+    fg="white",
+    font=("Arial", 12, "bold"),
+    width=25
+).pack(pady=10)
 
-        recognize_faces(frame, encodings, names)
-
-        detections = detect_objects(frame, conf=0.35)  
-        object_names = [n for (n, _, _) in detections]
-
-        if announce_objects and object_names:
-            count = Counter(object_names)
-            top = ", ".join([f"{k} {v}" if v > 1 else k for k, v in count.most_common(5)])
-            speak(f"Detected: {top}")
-
-        if target:
-            centered = object_under_center(detections, w, h)
-            if centered and centered.lower() == target.lower():
-                beep(1400, 120)
-
-        draw_overlay(frame, camera_index, announce_objects, target)
-
-        cv2.imshow("SeeSpeak", frame)
-        key = cv2.waitKey(1) & 0xFF
-
-        if key == ord('q'):
-            break
-
-        elif key == ord('f'): 
-            cap.release()
-            cap = cv2.VideoCapture(0)
-            camera_index = 0
-            speak("Front camera")
-
-        elif key == ord('b'):  
-            cap.release()
-            cap = cv2.VideoCapture(1)  
-            camera_index = 1
-            speak("Back camera")
-
-        elif key == ord('o'):  
-            announce_objects = not announce_objects
-            speak(f"Object announcements {'on' if announce_objects else 'off'}")
-
-        elif key == ord('t'):  
-            txt = recognize_text(frame, center_only=True)
-            if txt:
-                speak("Reading: " + txt)
-                print("", txt)
-            else:
-                speak("No readable text")
-
-        elif key == ord('s'):  
-            if object_names:
-                count = Counter(object_names)
-                summary = ", ".join([f"{k} {v}" if v > 1 else k for k, v in count.most_common(5)])
-                speak("Scene: " + summary)
-                print(" Scene:", summary)
-            else:
-                speak("No objects")
-
-        elif key == ord('c'):  
-            col = dominant_color_name(frame)
-            if col:
-                speak(f"{col}")
-                print(" Color:", col)
-            else:
-                speak("No color")
-
-        elif key == ord('g'): 
-            name = object_under_center(detections, w, h)
-            if name:
-                target = name
-                speak(f"Target {name}")
-                print("Target set:", name)
-            else:
-                target = None
-                speak("No target")
-
-    cap.release()
-    cv2.destroyAllWindows()
-    shutdown()
-
-if __name__ == "__main__":
-    main()
+root.mainloop()

@@ -1,21 +1,16 @@
-from ultralytics import YOLO
 import cv2
+import torch
 
-_model = YOLO("yolov8n.pt") 
+model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
 
-def detect_objects(frame, conf=0.35):
-    results = _model.predict(source=frame, conf=conf, verbose=False)[0]
-    found = []
-    for box in results.boxes:
-        cls_id = int(box.cls[0])
-        name = results.names[cls_id]
-        x1, y1, x2, y2 = map(int, box.xyxy[0])
-        score = float(box.conf[0])
+def detect_objects(frame):
+    results = model(frame)
+    detections = results.pandas().xyxy[0]
+    detected_objects = detections['name'].tolist()
 
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 190, 0), 2)
-        cv2.putText(frame, f"{name} {score:.2f}",
-                    (x1, max(y1 - 5, 10)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 190, 0), 1)
-
-        found.append((name, (x1, y1, x2, y2), score))
-    return found
+  
+    for _, row in detections.iterrows():
+        x1, y1, x2, y2, label = int(row['xmin']), int(row['ymin']), int(row['xmax']), int(row['ymax']), row['name']
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    return detected_objects
