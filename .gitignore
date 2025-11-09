@@ -1,0 +1,50 @@
+# === PYTHON ===
+__pycache__/
+*.py[cod]
+*$py.class
+
+# === VIRTUAL ENVIRONMENTS ===
+venv/
+.env/
+ENV/
+env/
+.venv/
+
+# === IDEs & EDITORS ===
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# === SYSTEM FILES ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === LOGS & TEMP FILES ===
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.tmp
+*.temp
+
+# === BUILD / DIST FILES ===
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# === TORCH & OPENCV (avoid large binary libs) ===
+*.dll
+*.lib
+*.so
+*.dylib
+*.dat
+
+# === OTHER ===
+__MACOSX/
+.cache/
+.ipynb_checkpoints/
